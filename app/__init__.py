@@ -1,1 +1,1 @@
-"""Core modules for the ArcParser MVP."""
+"""Core modules for the ConstructIQ MVP."""

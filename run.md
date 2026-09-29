@@ -1,6 +1,6 @@
-# Running ArcParser
+# Running ConstructIQ
 
-ArcParser is a Streamlit MVP for blueprint review, material takeoff, construction-log parsing, costing, and planned-versus-actual analysis.
+ConstructIQ is a Streamlit MVP for blueprint review, material takeoff, construction-log parsing, costing, and planned-versus-actual analysis.
 
 ## 1. Prerequisites
 
@@ -12,7 +12,7 @@ Install:
 Open a terminal in the project root:
 
 ```text
-cd C:\Users\DELL\Documents\arcparser
+cd C:\path\to\ConstructIQ
 ```
 
 ## 2. Create a virtual environment
@@ -180,7 +180,7 @@ The Gemini implementation is in `app/extraction.py`; configuration is loaded in 
 ## 12. Project structure
 
 ```text
-arcparser/
+ConstructIQ/
 ├── app.py
 ├── requirements.txt
 ├── .env.example

@@ -10,7 +10,7 @@ from app.reporting import costs_dataframe, excel_report, json_report, takeoff_da
 from app.takeoff import calculate_takeoff, default_rules
 
 
-st.set_page_config(page_title="ArcParser", page_icon="A", layout="wide")
+st.set_page_config(page_title="ConstructIQ", page_icon="C", layout="wide")
 
 
 def initialize_state() -> None:
@@ -157,12 +157,12 @@ def render_results() -> None:
     if not variance.empty:
         chart = variance.set_index("material")[["planned_quantity", "actual_quantity"]]
         st.bar_chart(chart)
-    st.download_button("Download JSON report", json_report(project.takeoff, project.costs, project.variance), "arcparser-report.json", "application/json")
-    st.download_button("Download Excel report", excel_report(project.takeoff, project.costs, project.variance), "arcparser-report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    st.download_button("Download JSON report", json_report(project.takeoff, project.costs, project.variance), "constructiq-report.json", "application/json")
+    st.download_button("Download Excel report", excel_report(project.takeoff, project.costs, project.variance), "constructiq-report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 initialize_state()
-st.title("ArcParser")
+st.title("ConstructIQ")
 st.caption("Architectural takeoff and construction cost intelligence MVP")
 page = st.sidebar.radio("Navigate", ["Dashboard", "Project setup", "Upload documents", "Blueprint analysis", "Takeoff and costs"])
 if page == "Dashboard":
