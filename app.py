@@ -26,13 +26,22 @@ def initialize_state() -> None:
 
 
 def process_blueprint(uploaded_file) -> None:
-    content = uploaded_file.getvalue()
+    task_status = st.status("Preparing blueprint processing...", expanded=True)
     try:
-        if uploaded_file.name.lower().endswith(".pdf"):
+        task_status.write("Checking the uploaded file...")
+        content = uploaded_file.getvalue()
+        suffix = uploaded_file.name.lower().rsplit(".", 1)[-1]
+        if suffix == "pdf":
             st.session_state.project.assumptions["pdf_pages"] = pdf_page_count(content)
+
+        if suffix == "json":
+            task_status.update(label="Validating structured blueprint data...", state="running")
+        else:
+            task_status.update(label="Sending drawing to Gemini for extraction...", state="running")
         extraction = extract_blueprint(uploaded_file.name, content)
         project = st.session_state.project
         project.extraction = extraction
+        task_status.update(label="Calculating takeoff, costs, and variance...", state="running")
         project.takeoff = calculate_takeoff(
             extraction.building_elements,
             default_rules(),
@@ -44,8 +53,10 @@ def process_blueprint(uploaded_file) -> None:
             aggregate_actuals(project.site_logs),
             project.assumptions.get("variance_threshold", 10.0),
         )
+        task_status.update(label="Blueprint processing complete", state="complete", expanded=False)
         st.success("Blueprint processed. Review extracted values before relying on the takeoff.")
     except (AIProviderError, RuntimeError, ValueError) as exc:
+        task_status.update(label="Blueprint processing failed", state="error", expanded=True)
         st.error(str(exc))
 
 

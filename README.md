@@ -1,8 +1,8 @@
-# ArcParser
+# ConstructIQ
 
-**AI-assisted blueprint review and construction material takeoff.** ArcParser extracts structured information from architectural drawings, applies configurable material rules and prices, and compares estimated quantities with site-log consumption.
+**AI-assisted blueprint review and construction material takeoff.** ConstructIQ extracts structured information from architectural drawings, applies configurable material rules and prices, and compares estimated quantities with site-log consumption.
 
-> ArcParser is an early-stage prototype. AI-extracted measurements and all estimates must be reviewed by a qualified construction professional before being used for procurement, engineering, or financial decisions.
+> ConstructIQ is an early-stage prototype. AI-extracted measurements and all estimates must be reviewed by a qualified construction professional before being used for procurement, engineering, or financial decisions.
 
 **Live demo:** Not deployed yet.
 
@@ -108,7 +108,7 @@ Uploaded blueprint PDFs and images are sent to Google's Gemini API for extractio
 ## Project Layout
 
 ```text
-arcparser/
+ConstructIQ/
 ├── app.py                 # Streamlit interface
 ├── app/                   # Models, extraction, calculations, and reporting
 ├── tests/                 # Automated tests
