@@ -37,7 +37,7 @@ def process_blueprint(uploaded_file) -> None:
         if suffix == "json":
             task_status.update(label="Validating structured blueprint data...", state="running")
         else:
-            task_status.update(label="Sending drawing to Gemini for extraction...", state="running")
+            task_status.update(label="Processing blueprint...", state="running")
         extraction = extract_blueprint(uploaded_file.name, content)
         project = st.session_state.project
         project.extraction = extraction
