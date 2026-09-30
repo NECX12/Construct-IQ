@@ -41,7 +41,7 @@ Set your local `.env` values:
 ```dotenv
 AI_PROVIDER=gemini
 MODEL_NAME=gemini-2.5-flash
-GEMINI_FALLBACK_MODEL=gemini-2.5-flash-lite
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
@@ -111,11 +111,11 @@ For local development, store Gemini credentials in `.env`. For Streamlit Communi
 ```toml
 AI_PROVIDER = "gemini"
 MODEL_NAME = "gemini-2.5-flash"
-GEMINI_FALLBACK_MODEL = "gemini-2.5-flash-lite"
+GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite"
 GEMINI_API_KEY = "your_gemini_api_key"
 ```
 
-If the primary model is temporarily overloaded, ConstructIQ retries the request and then tries the configured fallback model. The fallback setting is optional; it defaults to `gemini-2.5-flash-lite`.
+If the primary model is temporarily overloaded, ConstructIQ retries the request and then tries the configured fallback model. The fallback setting is optional; it defaults to `gemini-3.5-flash-lite`.
 
 Uploaded blueprint PDFs and images are sent to Google's Gemini API for extraction. Do not upload confidential or sensitive drawings unless you are authorized to share them with that service. Review Google's applicable terms and data handling policies before using real project documents.
 

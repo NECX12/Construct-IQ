@@ -87,7 +87,7 @@ def test_gemini_quota_error_does_not_switch_models():
         requested_models.append(model)
         return lambda: (_ for _ in ()).throw(RuntimeError("429 RESOURCE_EXHAUSTED"))
 
-    with pytest.raises(AIProviderError, match="rate-limited"):
+    with pytest.raises(AIProviderError, match="quota or rate limit reached.*429 RESOURCE_EXHAUSTED"):
         _generate_with_fallback(
             "primary-model",
             "fallback-model",

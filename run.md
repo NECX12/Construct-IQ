@@ -57,7 +57,7 @@ Gemini extraction requires a key. Set these values in your local `.env` file:
 ```text
 AI_PROVIDER=gemini
 MODEL_NAME=gemini-2.5-flash
-GEMINI_FALLBACK_MODEL=gemini-2.5-flash-lite
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
 GEMINI_API_KEY=your_key_here
 ```
 

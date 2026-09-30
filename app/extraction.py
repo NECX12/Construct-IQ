@@ -42,6 +42,22 @@ def _is_model_overload_error(error: Exception) -> bool:
     return "503" in message or "UNAVAILABLE" in message
 
 
+def _transient_error_message(error: Exception, model_name: str) -> str:
+    detail = str(error)
+    message = detail.upper()
+    if "429" in message or "RESOURCE_EXHAUSTED" in message:
+        return (
+            f"Gemini quota or rate limit reached for model '{model_name}'. "
+            "Check the model's limits and billing in Google AI Studio, wait for "
+            "the quota window to reset, or choose a model with available quota. "
+            f"Provider detail: {detail}"
+        )
+    return (
+        f"Gemini model '{model_name}' remained temporarily unavailable after retries. "
+        f"Try again later. Provider detail: {detail}"
+    )
+
+
 def _generate_with_retry(
     operation: Callable[[], ResponseT],
     sleep: Callable[[float], None] = time.sleep,
@@ -70,8 +86,7 @@ def _generate_with_fallback(
     except GeminiTransientError as primary_error:
         if not _is_model_overload_error(primary_error.last_error):
             raise AIProviderError(
-                "Gemini remains rate-limited or temporarily unavailable after retries. "
-                "Try again later."
+                _transient_error_message(primary_error.last_error, primary_model)
             ) from primary_error
         if not fallback_model or fallback_model == primary_model:
             raise AIProviderError(
@@ -83,8 +98,8 @@ def _generate_with_fallback(
             return _generate_with_retry(operation_for_model(fallback_model), sleep), True
         except GeminiTransientError as fallback_error:
             raise AIProviderError(
-                "The configured model and fallback model are both temporarily "
-                "unavailable. Wait briefly and try again."
+                "The primary model was overloaded. "
+                + _transient_error_message(fallback_error.last_error, fallback_model)
             ) from fallback_error
         except Exception as fallback_error:
             raise AIProviderError(
