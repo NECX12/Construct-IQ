@@ -71,6 +71,16 @@ For the full Windows setup and use instructions, see [run.md](run.md).
 
 For a deterministic test that does not call Gemini, upload a `.json` blueprint matching the example in [run.md](run.md).
 
+### Included sample files
+
+The repository includes synthetic test inputs under [`data/sample/`](data/sample/):
+
+- [Dimensioned sample floor plan PDF](data/sample/constructiq_dimensioned_floor_plan.pdf)
+- [Construction site log](data/sample/construction_site_log.txt)
+- [Material price book CSV](data/sample/price_book.csv)
+
+Upload the PDF and click **Process blueprint** to test drawing extraction. Then upload the site log and click **Process site log**, and upload the price book to test actual-versus-planned quantities and material costing. The PDF is a one-page illustrative drawing marked **NOT FOR CONSTRUCTION**; using it for PDF/image extraction requires a working Gemini API configuration. The site log and price book contain fictional values.
+
 ### Site-log example
 
 The current parser recognizes simple text in this shape:

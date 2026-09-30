@@ -8,3 +8,4 @@ data/processed/
 data/outputs/
 .streamlit/secrets.toml
 AGENT.md
+problem_report.md

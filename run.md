@@ -103,6 +103,16 @@ Stop the application with `Ctrl+C` in the terminal.
 9. Open **Takeoff and costs** to inspect quantities, prices, variance, and charts.
 10. Download the JSON or Excel report.
 
+### Included sample inputs
+
+Use the synthetic files in `data/sample/` to exercise the demo:
+
+- `constructiq_dimensioned_floor_plan.pdf`: one-page dimensioned illustrative drawing for blueprint extraction. It is marked not for construction and requires Gemini to process.
+- `construction_site_log.txt`: line-formatted fictional actual material consumption. Upload it and click **Process site log**.
+- `price_book.csv`: fictional unit prices for the materials used by the default takeoff rules. Upload it to replace the example prices.
+
+The drawing, site log, and price book are independent test inputs. AI extraction may interpret the drawing differently from its printed sample dimensions; review the extracted fields before using results.
+
 ## 8. Supported blueprint JSON format
 
 A JSON upload is useful for testing deterministic calculations before an AI provider is connected:
