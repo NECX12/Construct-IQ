@@ -1,6 +1,6 @@
 import pytest
 
-from app.extraction import AIProviderError, _generate_with_retry
+from app.extraction import AIProviderError, _generate_with_fallback, _generate_with_retry
 from app.models import AIExtractionResponse
 
 
@@ -53,3 +53,46 @@ def test_gemini_permanent_error_is_not_retried():
         _generate_with_retry(operation, sleep=lambda _delay: None)
 
     assert attempts == 1
+
+
+def test_gemini_503_uses_fallback_model_after_primary_retries():
+    requested_models = []
+
+    def operation_for_model(model):
+        requested_models.append(model)
+
+        def operation():
+            if model == "primary-model":
+                raise RuntimeError("503 UNAVAILABLE")
+            return "fallback result"
+
+        return operation
+
+    result, used_fallback = _generate_with_fallback(
+        "primary-model",
+        "fallback-model",
+        operation_for_model,
+        sleep=lambda _delay: None,
+    )
+
+    assert result == "fallback result"
+    assert used_fallback is True
+    assert requested_models == ["primary-model", "fallback-model"]
+
+
+def test_gemini_quota_error_does_not_switch_models():
+    requested_models = []
+
+    def operation_for_model(model):
+        requested_models.append(model)
+        return lambda: (_ for _ in ()).throw(RuntimeError("429 RESOURCE_EXHAUSTED"))
+
+    with pytest.raises(AIProviderError, match="rate-limited"):
+        _generate_with_fallback(
+            "primary-model",
+            "fallback-model",
+            operation_for_model,
+            sleep=lambda _delay: None,
+        )
+
+    assert requested_models == ["primary-model"]

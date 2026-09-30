@@ -13,6 +13,12 @@ class AIProviderError(RuntimeError):
     """Raised when the configured AI provider cannot complete extraction."""
 
 
+class GeminiTransientError(AIProviderError):
+    def __init__(self, last_error: Exception):
+        self.last_error = last_error
+        super().__init__(f"Transient Gemini error after 3 attempts: {last_error}")
+
+
 ResponseT = TypeVar("ResponseT")
 
 
@@ -31,6 +37,11 @@ def _is_transient_gemini_error(error: Exception) -> bool:
     )
 
 
+def _is_model_overload_error(error: Exception) -> bool:
+    message = str(error).upper()
+    return "503" in message or "UNAVAILABLE" in message
+
+
 def _generate_with_retry(
     operation: Callable[[], ResponseT],
     sleep: Callable[[float], None] = time.sleep,
@@ -43,12 +54,43 @@ def _generate_with_retry(
             if not _is_transient_gemini_error(exc):
                 raise
             if attempt == max_attempts - 1:
-                raise AIProviderError(
-                    "Gemini is temporarily busy or unavailable after 3 attempts. "
-                    "Wait briefly and try uploading the drawing again."
-                ) from exc
+                raise GeminiTransientError(exc) from exc
             sleep(2**attempt)
     raise AIProviderError("Gemini extraction did not complete")
+
+
+def _generate_with_fallback(
+    primary_model: str,
+    fallback_model: str,
+    operation_for_model: Callable[[str], Callable[[], ResponseT]],
+    sleep: Callable[[float], None] = time.sleep,
+) -> tuple[ResponseT, bool]:
+    try:
+        return _generate_with_retry(operation_for_model(primary_model), sleep), False
+    except GeminiTransientError as primary_error:
+        if not _is_model_overload_error(primary_error.last_error):
+            raise AIProviderError(
+                "Gemini remains rate-limited or temporarily unavailable after retries. "
+                "Try again later."
+            ) from primary_error
+        if not fallback_model or fallback_model == primary_model:
+            raise AIProviderError(
+                "The configured model is temporarily overloaded and no different "
+                "fallback model is configured. Try again later."
+            ) from primary_error
+
+        try:
+            return _generate_with_retry(operation_for_model(fallback_model), sleep), True
+        except GeminiTransientError as fallback_error:
+            raise AIProviderError(
+                "The configured model and fallback model are both temporarily "
+                "unavailable. Wait briefly and try again."
+            ) from fallback_error
+        except Exception as fallback_error:
+            raise AIProviderError(
+                f"The configured model was overloaded, and fallback model "
+                f"'{fallback_model}' failed: {fallback_error}"
+            ) from fallback_error
 
 
 def _mime_type(filename: str) -> str:
@@ -71,23 +113,33 @@ def _extract_with_gemini(filename: str, content: bytes) -> DrawingExtraction:
 
     try:
         client = genai.Client(api_key=settings.gemini_api_key)
-        response = _generate_with_retry(
-            lambda: client.models.generate_content(
-                model=settings.model_name,
-                contents=[
-                    types.Part.from_bytes(data=content, mime_type=_mime_type(filename)),
-                    BLUEPRINT_EXTRACTION_PROMPT,
-                ],
+        image_part = types.Part.from_bytes(data=content, mime_type=_mime_type(filename))
+
+        def operation_for_model(model_name: str):
+            return lambda: client.models.generate_content(
+                model=model_name,
+                contents=[image_part, BLUEPRINT_EXTRACTION_PROMPT],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=AIExtractionResponse,
                     temperature=0,
                 ),
             )
+
+        response, used_fallback = _generate_with_fallback(
+            settings.model_name,
+            settings.gemini_fallback_model,
+            operation_for_model,
         )
         if not response.text:
             raise AIProviderError("Gemini returned an empty extraction response")
         parsed = AIExtractionResponse.model_validate_json(response.text)
+        warnings = list(parsed.warnings)
+        if used_fallback:
+            warnings.append(
+                "The primary analysis model was busy, so a fallback model was used. "
+                "Review extracted measurements carefully."
+            )
         return DrawingExtraction(
             filename=filename,
             drawing_type=parsed.drawing_type,
@@ -104,7 +156,7 @@ def _extract_with_gemini(filename: str, content: bytes) -> DrawingExtraction:
                 )
                 for element in parsed.building_elements
             ],
-            warnings=parsed.warnings,
+            warnings=warnings,
         )
     except AIProviderError:
         raise
