@@ -170,10 +170,10 @@ def render_analysis() -> None:
     rooms = pd.DataFrame([room.model_dump() for room in extraction.rooms])
     if not rooms.empty:
         st.subheader("Rooms")
-        st.dataframe(rooms, use_container_width=True, hide_index=True)
+        st.dataframe(rooms, width="stretch", hide_index=True)
     elements = pd.DataFrame([element.model_dump() for element in extraction.building_elements])
     st.subheader("Building elements")
-    edited = st.data_editor(elements, use_container_width=True, hide_index=True, key="element_editor")
+    edited = st.data_editor(elements, width="stretch", hide_index=True, key="element_editor")
     if st.button("Apply reviewed elements"):
         extraction.building_elements = [element for element in extraction.building_elements]
         for index, row in edited.iterrows():
@@ -191,12 +191,12 @@ def render_results() -> None:
     total_cost = sum(line.estimated_cost for line in project.costs)
     st.metric("Estimated material cost", f"{project.currency} {total_cost:,.2f}")
     st.subheader("Material takeoff")
-    st.dataframe(takeoff_dataframe(project.takeoff), use_container_width=True, hide_index=True)
+    st.dataframe(takeoff_dataframe(project.takeoff), width="stretch", hide_index=True)
     st.subheader("Cost summary")
-    st.dataframe(costs_dataframe(project.costs), use_container_width=True, hide_index=True)
+    st.dataframe(costs_dataframe(project.costs), width="stretch", hide_index=True)
     st.subheader("Planned versus actual")
     variance = variance_dataframe(project.variance)
-    st.dataframe(variance, use_container_width=True, hide_index=True)
+    st.dataframe(variance, width="stretch", hide_index=True)
     if not variance.empty:
         chart = variance.set_index("material")[["planned_quantity", "actual_quantity"]]
         st.bar_chart(chart)

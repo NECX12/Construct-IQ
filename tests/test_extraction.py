@@ -80,19 +80,27 @@ def test_gemini_503_uses_fallback_model_after_primary_retries():
     assert requested_models == ["primary-model", "fallback-model"]
 
 
-def test_gemini_quota_error_does_not_switch_models():
+def test_gemini_quota_error_switches_to_fallback_model():
     requested_models = []
 
     def operation_for_model(model):
         requested_models.append(model)
-        return lambda: (_ for _ in ()).throw(RuntimeError("429 RESOURCE_EXHAUSTED"))
 
-    with pytest.raises(AIProviderError, match="quota or rate limit reached.*429 RESOURCE_EXHAUSTED"):
-        _generate_with_fallback(
-            "primary-model",
-            "fallback-model",
-            operation_for_model,
-            sleep=lambda _delay: None,
-        )
+        def operation():
+            if model == "primary-model":
+                raise RuntimeError("429 RESOURCE_EXHAUSTED")
+            return "fallback result"
 
-    assert requested_models == ["primary-model"]
+        return operation
+
+    result, used_fallback = _generate_with_fallback(
+        "primary-model",
+        "fallback-model",
+        operation_for_model,
+        sleep=lambda _delay: None,
+    )
+
+    assert result == "fallback result"
+    assert used_fallback is True
+    assert requested_models == ["primary-model", "fallback-model"]
+

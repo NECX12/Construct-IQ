@@ -39,7 +39,10 @@ def _is_transient_gemini_error(error: Exception) -> bool:
 
 def _is_model_overload_error(error: Exception) -> bool:
     message = str(error).upper()
-    return "503" in message or "UNAVAILABLE" in message
+    return any(
+        marker in message
+        for marker in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED")
+    )
 
 
 def _transient_error_message(error: Exception, model_name: str) -> str:
@@ -90,8 +93,8 @@ def _generate_with_fallback(
             ) from primary_error
         if not fallback_model or fallback_model == primary_model:
             raise AIProviderError(
-                "The configured model is temporarily overloaded and no different "
-                "fallback model is configured. Try again later."
+                "The configured model is temporarily overloaded or quota-exhausted "
+                "and no different fallback model is configured. Try again later."
             ) from primary_error
 
         try:
