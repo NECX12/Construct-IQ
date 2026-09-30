@@ -2,8 +2,13 @@ import pandas as pd
 import streamlit as st
 
 from app.costing import calculate_costs, calculate_variance
-from app.document_processing import pdf_page_count, read_text_file
-from app.extraction import AIProviderError, extract_blueprint
+from app.document_processing import read_text_file
+from app.jobs import (
+    get_blueprint_job,
+    mark_blueprint_job_complete,
+    mark_blueprint_job_failed,
+    submit_blueprint_job,
+)
 from app.logs import aggregate_actuals, parse_site_log
 from app.models import PriceEntry, ProjectState
 from app.reporting import costs_dataframe, excel_report, json_report, takeoff_dataframe, variance_dataframe
@@ -25,39 +30,60 @@ def initialize_state() -> None:
         }
 
 
-def process_blueprint(uploaded_file) -> None:
-    task_status = st.status("Preparing blueprint processing...", expanded=True)
-    try:
-        task_status.write("Checking the uploaded file...")
-        content = uploaded_file.getvalue()
-        suffix = uploaded_file.name.lower().rsplit(".", 1)[-1]
-        if suffix == "pdf":
-            st.session_state.project.assumptions["pdf_pages"] = pdf_page_count(content)
+def start_blueprint_processing(filename: str, content: bytes) -> None:
+    st.session_state.blueprint_job_id = submit_blueprint_job(filename, content)
 
-        if suffix == "json":
-            task_status.update(label="Validating structured blueprint data...", state="running")
-        else:
-            task_status.update(label="Processing blueprint...", state="running")
-        extraction = extract_blueprint(uploaded_file.name, content)
-        project = st.session_state.project
-        project.extraction = extraction
-        task_status.update(label="Calculating takeoff, costs, and variance...", state="running")
-        project.takeoff = calculate_takeoff(
-            extraction.building_elements,
-            default_rules(),
-            project.assumptions.get("wastage", {}),
-        )
-        project.costs = calculate_costs(project.takeoff, st.session_state.prices)
-        project.variance = calculate_variance(
-            project.takeoff,
-            aggregate_actuals(project.site_logs),
-            project.assumptions.get("variance_threshold", 10.0),
-        )
-        task_status.update(label="Blueprint processing complete", state="complete", expanded=False)
-        st.success("Blueprint processed. Review extracted values before relying on the takeoff.")
-    except (AIProviderError, RuntimeError, ValueError) as exc:
-        task_status.update(label="Blueprint processing failed", state="error", expanded=True)
-        st.error(str(exc))
+
+def is_blueprint_processing() -> bool:
+    job_id = st.session_state.get("blueprint_job_id")
+    job = get_blueprint_job(job_id) if job_id else None
+    return job is not None and job.state in {"queued", "running", "extracted"}
+
+
+def apply_blueprint_result(job) -> None:
+    project = st.session_state.project
+    project.extraction = job.extraction
+    if job.pdf_pages is not None:
+        project.assumptions["pdf_pages"] = job.pdf_pages
+    project.takeoff = calculate_takeoff(
+        job.extraction.building_elements,
+        default_rules(),
+        project.assumptions.get("wastage", {}),
+    )
+    project.costs = calculate_costs(project.takeoff, st.session_state.prices)
+    project.variance = calculate_variance(
+        project.takeoff,
+        aggregate_actuals(project.site_logs),
+        project.assumptions.get("variance_threshold", 10.0),
+    )
+
+
+@st.fragment(run_every="1s")
+def render_blueprint_job_status() -> None:
+    job_id = st.session_state.get("blueprint_job_id")
+    if not job_id:
+        return
+
+    job = get_blueprint_job(job_id)
+    if job is None:
+        st.warning("The processing task is no longer available. Please submit the blueprint again.")
+    elif job.state in {"queued", "running"}:
+        st.info(f"{job.message}  File: {job.filename}")
+        st.progress(job.progress)
+    elif job.state == "extracted":
+        st.info(job.message)
+        st.progress(job.progress)
+        try:
+            apply_blueprint_result(job)
+            mark_blueprint_job_complete(job_id)
+            st.success("Blueprint processing complete. Review extracted values before relying on the takeoff.")
+        except (RuntimeError, ValueError) as exc:
+            mark_blueprint_job_failed(job_id, str(exc))
+            st.error(f"Could not calculate results from the extracted blueprint: {exc}")
+    elif job.state == "failed":
+        st.error(f"{job.message} {job.error or ''}")
+    else:
+        st.success("Blueprint processing complete. Review extracted values before relying on the takeoff.")
 
 
 def refresh_calculations() -> None:
@@ -97,8 +123,14 @@ def render_setup() -> None:
 def render_uploads() -> None:
     st.header("Upload documents")
     blueprint = st.file_uploader("Blueprint or structured extraction", type=["pdf", "png", "jpg", "jpeg", "json"])
-    if blueprint and st.button("Process blueprint", type="primary"):
-        process_blueprint(blueprint)
+    if blueprint:
+        st.button(
+            "Process blueprint",
+            type="primary",
+            disabled=is_blueprint_processing(),
+            on_click=start_blueprint_processing,
+            args=(blueprint.name, blueprint.getvalue()),
+        )
     site_log = st.file_uploader("Construction site log", type=["txt", "md", "csv"])
     if site_log and st.button("Process site log"):
         try:
@@ -176,6 +208,8 @@ initialize_state()
 st.title("ConstructIQ")
 st.caption("Architectural takeoff and construction cost intelligence MVP")
 page = st.sidebar.radio("Navigate", ["Dashboard", "Project setup", "Upload documents", "Blueprint analysis", "Takeoff and costs"])
+if st.session_state.get("blueprint_job_id"):
+    render_blueprint_job_status()
 if page == "Dashboard":
     render_results()
 elif page == "Project setup":
