@@ -1,0 +1,10 @@
+Date: 30/09/2026
+Activity: Sample blockwork and floor finishing
+Workers: 6
+
+Cement - 12 bags
+Blocks - 780 pcs
+Sand - 1.6 m3
+Tiles - 35 m2
+
+Remarks: Synthetic test data only. Quantities are illustrative and are not construction records.
